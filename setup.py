@@ -13,7 +13,9 @@ setup(
         "numpy",
         "cdifflib",
         "keras",
-        "spacy==2.1.0"
+        "spacy==2.1.0",
+        "keras_preprocessing",
+        "transformers"
     ],
     dependency_links=[
         "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.1.0/en_core_web_sm-2.1.0.tar.gz",

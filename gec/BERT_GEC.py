@@ -20,6 +20,7 @@
 from typing import List
 import torch
 from pytorch_pretrained_bert import BertTokenizer, BertForSequenceClassification, BertForMaskedLM
+from transformers import pipeline
 import requests
 from keras_preprocessing.sequence import pad_sequences
 import numpy as np
@@ -121,7 +122,7 @@ class GEC_Model:
         "could",
     ]
 
-    def __init__(self) -> None:
+    def __init__(self, MLM="mn367/mark-finetuned-imdb") -> None:
         # Load pre-trained model tokenizer (vocabulary)
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
@@ -138,9 +139,9 @@ class GEC_Model:
         self.modelGED.eval()
 
         # Load pre-trained model (weights) for Masked Language Model (MLM)
-        # TODO: Fine-Tune on technical dataset
-        self.model = BertForMaskedLM.from_pretrained("bert-large-uncased")
-        self.model.eval()
+        self.model_pipeline = pipeline(
+            "fill-mask", model=MLM
+        )
 
         # Load pre-trained model tokenizer (vocabulary)
         self.tokenizerLarge = BertTokenizer.from_pretrained("bert-large-uncased")
@@ -391,32 +392,13 @@ class GEC_Model:
         mask = False  # flag indicating if we are processing space MASK
 
         for i, sent in enumerate(sentences):
-            # tokenize the text
-            tokenized_text = self.tokenizerLarge.tokenize(sent)
-            indexed_tokens = self.tokenizerLarge.convert_tokens_to_ids(tokenized_text)
-
-            # Create the segments tensors.
-            segments_ids = [0] * len(tokenized_text)
-
-            # Convert inputs to PyTorch tensors
-            tokens_tensor = torch.tensor([indexed_tokens])
-            segments_tensors = torch.tensor([segments_ids])
-
             # Predict all tokens
             with torch.no_grad():
-                predictions = self.model(tokens_tensor, segments_tensors)
-
-            # index of the masked token
-            mask_index = (tokens_tensor == mask_token).nonzero()[0][1].item()
+                predictions = self.model_pipeline(sent)
 
             # predicted token
-            predicted_index = torch.argmax(predictions[0, mask_index]).item()
-            predicted_token = self.tokenizerLarge.convert_ids_to_tokens([predicted_index])[0]
-
-            # second best prediction. Can you used to create more options
-            # second_index = torch.topk(predictions[0, mask_index], 2)[1][1].item()
-            # second_prediction = tokenizer.convert_ids_to_tokens([second_index])[0]
-
+            predicted_token = predictions[0]['token_str']
+            
             text = sent.strip().split()
             mask_index = text.index("[MASK]")
 
