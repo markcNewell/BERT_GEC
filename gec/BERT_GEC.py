@@ -146,9 +146,6 @@ class GEC_Model:
         # Load pre-trained model tokenizer (vocabulary)
         self.tokenizerLarge = BertTokenizer.from_pretrained("bert-large-uncased")
 
-        self.nlp = spacy.load("en_core_web_sm")
-        self.gn = None #TODO: Look at hunspell for windows
-
 
     def download_file_from_google_drive(self, id: str, destination: str) -> str:
         print("Trying to fetch {}".format(destination))
@@ -270,51 +267,7 @@ class GEC_Model:
 
 
     def create_spelling_set(self, org_text: str, softmax_threshold: float = 0.6) -> List[str]:
-        """Create a set of sentences which have possible corrected spellings"""
-
-        sent = org_text
-        sent = sent.lower()
-        sent = sent.strip().split()
-
-        proc_sent = self.nlp.tokenizer.tokens_from_list(
-            sent
-        )  # https://github.com/explosion/spaCy/issues/5399
-        self.nlp.tagger(proc_sent)
-
-        sentences = []
-
-        for tok in proc_sent:
-            # check for spelling for alphanumeric
-            if tok.text.isalpha() and not self.gb.spell(tok.text):
-                new_sent = sent[:]
-                # append new sentences with possible corrections
-                for sugg in self.gb.suggest(tok.text):
-                    new_sent[tok.i] = sugg
-                    sentences.append(" ".join(sent))
-
-        spelling_sentences = sentences
-
-        # retain new sentences which have a
-        # minimum chance of correctness using BERT GED
-        new_sentences = []
-
-        for sent in spelling_sentences:
-            no_error, prob_val = self.check_GE([sent])
-            exps = [np.exp(i) for i in prob_val[0]]
-            sum_of_exps = sum(exps)
-            softmax = [j / sum_of_exps for j in exps]
-            if softmax[1] > softmax_threshold:
-                new_sentences.append(sent)
-
-        # if no corrections, append the original sentence
-        if len(spelling_sentences) == 0:
-            spelling_sentences.append(" ".join(sent))
-
-        # eliminate dupllicates
-        [spelling_sentences.append(sent) for sent in new_sentences]
-        spelling_sentences = list(dict.fromkeys(spelling_sentences))
-
-        return spelling_sentences
+        pass
 
 
     def create_grammar_set(self, spelling_sentences: List[str], softmax_threshold: float = 0.6) -> List[str]:
@@ -398,7 +351,7 @@ class GEC_Model:
 
             # predicted token
             predicted_token = predictions[0]['token_str']
-            
+
             text = sent.strip().split()
             mask_index = text.index("[MASK]")
 
